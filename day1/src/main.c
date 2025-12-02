@@ -3,11 +3,14 @@
 #include <sys/time.h>
 typedef struct timeval timeval;
 
-#define BUFFERSIZE 100
+#define BUFFERSIZE 10
 char filename[] = "input.txt";
 
 static int file_readline(FILE *file, char *buffer, unsigned buffersize) {
-  memset(buffer, 100, sizeof(char));
+  memset(buffer, 0, BUFFERSIZE * sizeof(char));
+  // for (int i = 0; i < buffersize; i++) {
+  //   buffer[i] = 0;
+  // }
 
   int c;
   for (int i = 0; i < buffersize; i++) {
