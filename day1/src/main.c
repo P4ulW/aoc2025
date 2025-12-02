@@ -3,7 +3,7 @@
 typedef struct timeval timeval;
 
 #define BUFFERSIZE 100
-char filename[] = "test.txt";
+char filename[] = "input.txt";
 
 static int file_readline(FILE *file, char *buffer, unsigned buffersize) {
   for (int i = 0; i < buffersize; i++) {
@@ -66,9 +66,14 @@ int main() {
       rotation_curr = (rotation_curr + amount) % 100;
     } else {
       if (rotation_curr == 0) {
-
-      } else {
+        clicks = amount / 100;
+      } else if (amount >= rotation_curr) {
+        clicks = (amount - rotation_curr) / 100 + 1;
       }
+      rotation_curr = (rotation_curr - amount) % 100;
+    }
+    while (rotation_curr < 0) {
+      rotation_curr += 100;
     }
 
     num_zeros_p2 += clicks;
@@ -78,7 +83,7 @@ int main() {
     }
 
     printf("%5s, dir: %2d, amout: %2d, rot: %2d, clicks: %4d\n", buffer, dir,
-           amount_corr, rotation_curr, num_zeros_p2);
+           amount, rotation_curr, num_zeros_p2);
     rotation_prev = rotation_curr;
   }
 
