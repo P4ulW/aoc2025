@@ -1,2 +1,2 @@
 default:
-	gcc src/main.c -O3 -o main
+	gcc src/main.c -O3 -o out

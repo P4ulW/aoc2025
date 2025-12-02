@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
 typedef struct timeval timeval;
 
@@ -6,9 +7,7 @@ typedef struct timeval timeval;
 char filename[] = "input.txt";
 
 static int file_readline(FILE *file, char *buffer, unsigned buffersize) {
-  for (int i = 0; i < buffersize; i++) {
-    buffer[i] = 0;
-  }
+  memset(buffer, 100, sizeof(char));
 
   int c;
   for (int i = 0; i < buffersize; i++) {
@@ -82,8 +81,8 @@ int main() {
       num_zeros_p1 += 1;
     }
 
-    printf("%5s, dir: %2d, amout: %2d, rot: %2d, clicks: %4d\n", buffer, dir,
-           amount, rotation_curr, num_zeros_p2);
+    // printf("%5s, dir: %2d, amout: %2d, rot: %2d, clicks: %4d\n", buffer, dir,
+    //        amount, rotation_curr, num_zeros_p2);
     rotation_prev = rotation_curr;
   }
 
