@@ -6,7 +6,7 @@
 Array_Prototype(StringSlice);
 Array_Impl(StringSlice);
 
-const char filename[] = "test.txt";
+const char filename[] = "input.txt";
 
 void read_file_to_string(String* string, FILE* file) {
   int c;
@@ -63,12 +63,12 @@ void StringSlice_print(StringSlice str) {
   return;
 }
 
-static int StringSlice_to_int(StringSlice str) {
-  int result = 0;
+static U64 StringSlice_to_int(StringSlice str) {
+  U64 result = 0;
 
   for (int i = 0; i < str.len; i++) {
     char current = str.items[i];
-    if ((current < '0') && (current > '9')) {
+    if ((current < '0') || (current > '9')) {
       break;
     }
     result *= 10;
@@ -76,6 +76,34 @@ static int StringSlice_to_int(StringSlice str) {
   }
 
   return result;
+}
+
+U32 is_num_dup(U64 num) {
+  int len = 0;
+  U64 temp = num;
+  while (temp != 0) {
+    len += 1;
+    temp = temp / 10;
+  }
+
+  if (len % 2) {
+    return 0;
+  }
+
+  U64 div = 1;
+  for (int i = 0; i < len / 2; i++) {
+    div *= 10;
+  }
+  U64 lower = num % div;
+  U64 upper = num / div;
+
+  // printf("num: %lu upp: %lu lower %lu\n", num, upper, lower);
+
+  if (lower != upper) {
+    return 0;
+  }
+
+  return 1;
 }
 
 int main() {
@@ -88,7 +116,7 @@ int main() {
   StringSlice input_as_slice = {.items = input.items, .len = input.len};
   StringSlice_split_to_slices(&slices, input_as_slice, ',');
 
-  U32 result = 0;
+  U64 result = 0;
 
   for (int i = 0; i < slices.len; i++) {
     StringSlice current = ArrayStringSlice_get_value(&slices, i);
@@ -99,15 +127,22 @@ int main() {
     StringSlice current = ArrayStringSlice_get_value(&slices, i);
     ArrayStringSlice range = ArrayStringSlice_with_capacity(&arena, 2);
     StringSlice_split_to_slices(&range, current, '-');
-    int lower = StringSlice_to_int(range.items[0]);
-    int upper = StringSlice_to_int(range.items[1]);
+    U64 lower = StringSlice_to_int(range.items[0]);
+    U64 upper = StringSlice_to_int(range.items[1]);
 
-    printf("form %d to %d\n", lower, upper);
+    printf("form %ld to %ld\n", lower, upper);
+    for (U64 num = lower; num <= upper; num++) {
+      U32 is_dup = is_num_dup(num);
+      if (is_dup) {
+        printf("num: %lu\n", num);
+        result += num;
+      }
+    }
 
-    // StringSlice_print(range.items[0]);
-    // StringSlice_print(range.items[1]);
+    printf("\n");
   }
 
+  printf("\x1b[7m\x1b[32mresult part 1: %lu\x1b[0m\n", result);
   // printf("string: %s size %d", input.items, input.len);
   arena_free(&arena);
 
