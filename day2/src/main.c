@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <sys/time.h>
 #include "arena.c"
 #include "array.c"
 #include "string.c"
+typedef struct timeval timeval;
 
 Array_Prototype(StringSlice);
 Array_Impl(StringSlice);
@@ -16,7 +18,7 @@ void read_file_to_string(String* string, FILE* file) {
       break;
     }
 
-    printf("%c", (char)c);
+    // printf("%c", (char)c);
     String_push(string, (char)c);
   }
   return;
@@ -107,6 +109,8 @@ U32 is_num_dup(U64 num) {
 }
 
 int main() {
+  timeval start, end;
+  gettimeofday(&start, NULL);
   Arena arena = {0};
   arena_init(&arena, Megabytes(1));
   String input = String_with_capacity(&arena, Kilobytes(2));
@@ -118,10 +122,10 @@ int main() {
 
   U64 result = 0;
 
-  for (int i = 0; i < slices.len; i++) {
-    StringSlice current = ArrayStringSlice_get_value(&slices, i);
-    StringSlice_print(current);
-  }
+  // for (int i = 0; i < slices.len; i++) {
+  // StringSlice current = ArrayStringSlice_get_value(&slices, i);
+  // StringSlice_print(current);
+  // }
 
   for (int i = 0; i < slices.len; i++) {
     StringSlice current = ArrayStringSlice_get_value(&slices, i);
@@ -130,20 +134,23 @@ int main() {
     U64 lower = StringSlice_to_int(range.items[0]);
     U64 upper = StringSlice_to_int(range.items[1]);
 
-    printf("form %ld to %ld\n", lower, upper);
+    // printf("form %ld to %ld\n", lower, upper);
     for (U64 num = lower; num <= upper; num++) {
       U32 is_dup = is_num_dup(num);
       if (is_dup) {
-        printf("num: %lu\n", num);
+        // printf("num: %lu\n", num);
         result += num;
       }
     }
 
-    printf("\n");
+    // printf("\n");
   }
 
   printf("\x1b[7m\x1b[32mresult part 1: %lu\x1b[0m\n", result);
   // printf("string: %s size %d", input.items, input.len);
+  gettimeofday(&end, NULL);
+  double dt = end.tv_usec - start.tv_usec;
+  printf("time: %f µs\n", dt);
   arena_free(&arena);
 
   return 0;
