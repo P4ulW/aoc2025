@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 typedef struct timeval timeval;
@@ -19,25 +20,24 @@ static int file_readline(FILE *file, char *buffer, unsigned buffersize) {
       return 0;
     }
 
-    if ((char)c == '\n') {
+    c = (char)c;
+    if (c == '\n') {
       break;
     }
-
-    buffer[i] = (char)c;
+    buffer[i] = c;
   }
 
   return 1;
 }
 
 static int parse_int(char *buffer) {
-  char current = buffer[0];
+  unsigned char current = buffer[0] - '0';
   int i = 1;
   int result = 0;
 
-  while ((current >= '0') && (current <= '9')) {
-    result *= 10;
-    result += current - (int)'0';
-    current = buffer[i++];
+  while (current <= '9') {
+    result = result * 10 + current;
+    current = (unsigned char)buffer[i++] - (unsigned char)'0';
   }
 
   return result;
@@ -89,11 +89,11 @@ int main() {
     rotation_prev = rotation_curr;
   }
 
-  printf("\x1b[33mResult part 1: %d\x1b[0m\n", num_zeros_p1);
-  printf("\x1b[33mResult part 2: %d\x1b[0m\n", num_zeros_p2);
   gettimeofday(&end, NULL);
   double dt = end.tv_usec - start.tv_usec;
   printf("time: %f µs\n", dt);
+  printf("\x1b[33mResult part 1: %d\x1b[0m\n", num_zeros_p1);
+  printf("\x1b[33mResult part 2: %d\x1b[0m\n", num_zeros_p2);
   fclose(input);
   return 0;
 }
