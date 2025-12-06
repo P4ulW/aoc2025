@@ -1,0 +1,17 @@
+---
+AlignTrailingComments: true
+AlignConsecutiveAssignments:
+  Enabled: true
+AlignAfterOpenBracket: AlwaysBreak
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+BreakBeforeBinaryOperators: false
+BreakBeforeBraces: Linux
+IndentWidth: 4
+SortIncludes: false
+NamespaceIndentation: All
+IndentCaseLabels: true
+BinPackParameters: false
+BinPackArguments: false
+...
