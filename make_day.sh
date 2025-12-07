@@ -16,7 +16,7 @@ git checkout dev
 rm .git -rvf
 popd
 popd
-echo $'#include<stdio.h>\nint main() {\n\treturn;\n}' >> src/main.c
+echo $'#include<stdio.h>\nint main() {\n\treturn 0;\n}' >> src/main.c
 echo $'default:\n\tgcc -g -O3 src/main.c -o out' >> Makefile
 popd
 echo "$dirname successfully created"
