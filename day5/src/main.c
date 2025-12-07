@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <time.h>
 
 #include "cbase/src/arena.c"
-#include "cbase/src/array.c"
 #include "cbase/src/string.c"
+#include "cbase/src/array.c"
 
 #define NUM_LINES 10000
 
@@ -60,13 +61,17 @@ static B32 IdRange_includes_U64(const IdRange range, const U64 id)
 
 int main()
 {
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
+
     Arena arena = {0};
     Arena_init(&arena, Megabytes(10));
     String input = String_with_capacity(&arena, Megabytes(1));
     FILE *file   = fopen(filename, "r");
     read_file_to_string(&input, file);
     fclose(file);
-    String_print(input);
+    // String_print(input);
     StringSlice input_as_slice = {.items = input.items, .len = input.len};
 
     ArrayStringSlice lines = ArrayStringSlice_with_capacity(&arena, NUM_LINES);
@@ -89,7 +94,7 @@ int main()
         }
     }
 
-    printf("ranges:\n");
+    // printf("ranges:\n");
     ArrayIdRange ranges = ArrayIdRange_with_capacity(&arena, NUM_LINES);
     StringSlice mem_id_range[2];
     for (U32 i = 0; i < range_slices.len; i++) {
@@ -100,22 +105,23 @@ int main()
         U64 id_start  = U64_from_stringslice(id_range_slices.items[0]);
         U64 id_end    = U64_from_stringslice(id_range_slices.items[1]);
         IdRange range = {.start = id_start, .end = id_end};
-        printf("range: %lu - %lu\n", range.start, range.end);
+        // printf("range: %lu - %lu\n", range.start, range.end);
         ArrayIdRange_push(&ranges, range);
     }
 
     U32 result_part_1 = 0;
-    printf("\nIDs:\n");
+    // printf("\nIDs:\n");
     for (U32 i = 0; i < ids.len; i++) {
         StringSlice id_slice = ArrayStringSlice_get_value(&ids, i);
-        StringSlice_print(id_slice);
+        // StringSlice_print(id_slice);
         U64 id = U64_from_stringslice(id_slice);
 
         B32 is_included = 0;
         for (U32 i = 0; i < ranges.len; i++) {
             IdRange range = ArrayIdRange_get_value(&ranges, i);
             if (IdRange_includes_U64(range, id)) {
-                printf("ID %lu inside %lu - %lu\n", id, range.start, range.end);
+                // printf("ID %lu inside %lu - %lu\n", id, range.start,
+                // range.end);
                 is_included = 1;
                 break;
             }
@@ -128,5 +134,10 @@ int main()
     printf("result_part_1: %u\n", result_part_1);
 
     Arena_free(&arena);
+
+    end           = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("cpu_time_used: %f\n", cpu_time_used);
+
     return 0;
 }
