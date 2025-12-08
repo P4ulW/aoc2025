@@ -7,8 +7,17 @@
 
 #define NUM_LINES 10000
 
-char filename[] = "input.txt";
+char filename[] = "test.txt";
 
+typedef struct {
+    U64 start;
+    U64 end;
+} IdRange;
+
+Array_Prototype(IdRange);
+Array_Impl(IdRange);
+
+// ------------------------------------------- //
 static U64 U64_from_stringslice(const StringSlice slice)
 {
     U64 out = 0;
@@ -24,6 +33,7 @@ static U64 U64_from_stringslice(const StringSlice slice)
     return out;
 }
 
+// ------------------------------------------- //
 static void read_file_to_string(String *string, FILE *file)
 {
     int c;
@@ -39,14 +49,7 @@ static void read_file_to_string(String *string, FILE *file)
     return;
 }
 
-typedef struct {
-    U64 start;
-    U64 end;
-} IdRange;
-
-Array_Prototype(IdRange);
-Array_Impl(IdRange);
-
+// ------------------------------------------- //
 static B32 IdRange_includes_U64(const IdRange range, const U64 id)
 {
     B32 out = 1;
@@ -59,6 +62,70 @@ static B32 IdRange_includes_U64(const IdRange range, const U64 id)
     return out;
 };
 
+// ------------------------------------------- //
+B32 IdRange_overlaps_with(const IdRange self, const IdRange range)
+{
+    B32 overlap = 0;
+    if ((self.start > range.start) && (self.end > range.start)) {
+        overlap = 1;
+    } else if ((self.start < range.end) && (self.end > range.end)) {
+        overlap = 1;
+    }
+
+    return overlap;
+}
+
+// ------------------------------------------- //
+static inline U64 U64_min(U64 a, U64 b)
+{
+    if (a > b) {
+        return b;
+    }
+    return a;
+}
+
+// ------------------------------------------- //
+static inline U64 U64_max(U64 a, U64 b)
+{
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+// ------------------------------------------- //
+void IdRange_extend(IdRange *self, const IdRange range)
+{
+    self->start = U64_min(self->start, range.start);
+    self->end   = U64_max(self->end, range.end);
+}
+
+// ------------------------------------------- //
+ArrayIdRange get_unique_ranges(Arena *arena, const ArrayIdRange ranges)
+{
+    ArrayIdRange ranges_unique = ArrayIdRange_with_capacity(arena, ranges.len);
+    for (U32 i = 0; i < ranges.len; i++) {
+        IdRange range = ArrayIdRange_get_value(&ranges, i);
+
+        B32 did_overlap = 0;
+        for (U32 j = 0; j < ranges_unique.len; j++) {
+            IdRange *range_unique = ArrayIdRange_get_ref(&ranges_unique, j);
+            if (IdRange_overlaps_with(*range_unique, range)) {
+                IdRange_extend(range_unique, range);
+                did_overlap = 1;
+                break;
+            }
+        }
+
+        if (!did_overlap) {
+            ArrayIdRange_push(&ranges_unique, range);
+        }
+    }
+
+    return ranges_unique;
+}
+
+// ------------------------------------------- //
 int main()
 {
     clock_t start, end;
@@ -94,7 +161,7 @@ int main()
         }
     }
 
-    // printf("ranges:\n");
+    printf("ranges:\n");
     ArrayIdRange ranges = ArrayIdRange_with_capacity(&arena, NUM_LINES);
     StringSlice mem_id_range[2];
     for (U32 i = 0; i < range_slices.len; i++) {
@@ -105,7 +172,7 @@ int main()
         U64 id_start  = U64_from_stringslice(id_range_slices.items[0]);
         U64 id_end    = U64_from_stringslice(id_range_slices.items[1]);
         IdRange range = {.start = id_start, .end = id_end};
-        // printf("range: %lu - %lu\n", range.start, range.end);
+        printf("range: %lu - %lu\n", range.start, range.end);
         ArrayIdRange_push(&ranges, range);
     }
 
@@ -132,6 +199,14 @@ int main()
     }
 
     printf("result_part_1: %u\n", result_part_1);
+
+    ArrayIdRange ranges_unique = get_unique_ranges(&arena, ranges);
+    ranges_unique              = get_unique_ranges(&arena, ranges_unique);
+    printf("ranges:\n");
+    for (U32 i = 0; i < ranges_unique.len; i++) {
+        IdRange range = ArrayIdRange_get_value(&ranges_unique, i);
+        printf("range: %lu - %lu\n", range.start, range.end);
+    }
 
     Arena_free(&arena);
 
