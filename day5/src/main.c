@@ -7,7 +7,7 @@
 
 #define NUM_LINES 10000
 
-char filename[] = "test.txt";
+char filename[] = "input.txt";
 
 typedef struct {
     U64 start;
@@ -66,9 +66,9 @@ static B32 IdRange_includes_U64(const IdRange range, const U64 id)
 B32 IdRange_overlaps_with(const IdRange self, const IdRange range)
 {
     B32 overlap = 0;
-    if ((self.start > range.start) && (self.end > range.start)) {
+    if ((self.start <= range.start) && (self.end >= range.start)) {
         overlap = 1;
-    } else if ((self.start < range.end) && (self.end > range.end)) {
+    } else if ((self.start <= range.end) && (self.end >= range.end)) {
         overlap = 1;
     }
 
@@ -106,11 +106,16 @@ ArrayIdRange get_unique_ranges(Arena *arena, const ArrayIdRange ranges)
     ArrayIdRange ranges_unique = ArrayIdRange_with_capacity(arena, ranges.len);
     for (U32 i = 0; i < ranges.len; i++) {
         IdRange range = ArrayIdRange_get_value(&ranges, i);
+        // printf("range: | %lu - %lu | ", range.start, range.end);
 
         B32 did_overlap = 0;
         for (U32 j = 0; j < ranges_unique.len; j++) {
             IdRange *range_unique = ArrayIdRange_get_ref(&ranges_unique, j);
             if (IdRange_overlaps_with(*range_unique, range)) {
+                // printf(
+                // "overlaps with: | %lu - %lu |",
+                // range_unique->start,
+                // range_unique->end);
                 IdRange_extend(range_unique, range);
                 did_overlap = 1;
                 break;
@@ -120,9 +125,50 @@ ArrayIdRange get_unique_ranges(Arena *arena, const ArrayIdRange ranges)
         if (!did_overlap) {
             ArrayIdRange_push(&ranges_unique, range);
         }
+        // printf("\n");
     }
 
     return ranges_unique;
+}
+
+// ------------------------------------------- //
+static inline U64 IdRange_number_of_ids(const IdRange range)
+{
+    return range.end - range.start + 1;
+}
+
+// B32 ArrayIdRange_is_sorted_by_start(const ArrayIdRange *range)
+// {
+//     IdRange prev = {0};
+//     for (U32 i = 0; i < range->len; i++) {
+//         IdRange current = ArrayIdRange_get_value(range, i);
+//         if (current.start < prev.start) {
+//             return 0;
+//         }
+//
+//         prev = current;
+//     }
+//     return 1;
+// }
+
+void ArrayIdRange_sort_by_start(ArrayIdRange *range)
+{
+    if (range->len <= 1) {
+        return;
+    }
+
+    for (U32 pass = 0; pass < range->len - 1; pass++) {
+        for (U32 i = 0; i < range->len - 1 - pass; i++) {
+            IdRange *current = ArrayIdRange_get_ref(range, i);
+            IdRange *next    = ArrayIdRange_get_ref(range, i + 1);
+            if (current->start > next->start) {
+                IdRange temp = *current;
+                *current     = *next;
+                *next        = temp;
+            }
+        }
+    }
+    return;
 }
 
 // ------------------------------------------- //
@@ -177,6 +223,7 @@ int main()
     }
 
     U32 result_part_1 = 0;
+    U64 result_part_2 = 0;
     // printf("\nIDs:\n");
     for (U32 i = 0; i < ids.len; i++) {
         StringSlice id_slice = ArrayStringSlice_get_value(&ids, i);
@@ -200,13 +247,23 @@ int main()
 
     printf("result_part_1: %u\n", result_part_1);
 
+    ArrayIdRange_sort_by_start(&ranges);
+    printf("sorted ranges:\n");
+    for (U32 i = 0; i < ranges.len; i++) {
+        IdRange range = ArrayIdRange_get_value(&ranges, i);
+        printf("range: %15lu - %15lu\n", range.start, range.end);
+    }
+
     ArrayIdRange ranges_unique = get_unique_ranges(&arena, ranges);
-    ranges_unique              = get_unique_ranges(&arena, ranges_unique);
-    printf("ranges:\n");
+
+    printf("ranges uniquefied:\n");
     for (U32 i = 0; i < ranges_unique.len; i++) {
         IdRange range = ArrayIdRange_get_value(&ranges_unique, i);
-        printf("range: %lu - %lu\n", range.start, range.end);
+        result_part_2 += IdRange_number_of_ids(range);
+        printf("range: %15lu - %15lu\n", range.start, range.end);
     }
+
+    printf("result_part_2: %lu\n", result_part_2);
 
     Arena_free(&arena);
 
