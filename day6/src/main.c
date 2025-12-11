@@ -59,13 +59,13 @@ int main()
 
     for (U32 i = 0; i < lines.len; i++) {
         StringSlice line = ArrayStringSlice_get_value(&lines, i);
-        StringSlice_print(line);
+        // StringSlice_print(line);
     }
 
     U32 start_index = 0;
     StringSlice line_operators =
         ArrayStringSlice_get_value(&lines, lines.len - 2);
-    StringSlice_print(line_operators);
+    // StringSlice_print(line_operators);
 
     U64 res_part_1 = 0;
 
@@ -76,12 +76,12 @@ int main()
         for (U32 i = 0; i < lines.len - 2; i++) {
             StringSlice line = ArrayStringSlice_get_value(&lines, i);
             U64 num          = StringSlice_at_index_to_U64(line, start_index);
-            printf("%10lu\n", num);
+            // printf("%10lu\n", num);
             ArrayU64_push(&nums, num);
         }
 
         char operator= line_operators.items[start_index];
-        printf("%10c\n----------\n", operator);
+        // printf("%10c\n----------\n", operator);
 
         U64 result = (operator== '+') ? 0 : 1;
         while (nums.len) {
@@ -92,7 +92,7 @@ int main()
                 result *= num;
             }
         }
-        printf("= %8lu\n\n", result);
+        // printf("= %8lu\n\n", result);
         res_part_1 += result;
 
         start_index += 1;
