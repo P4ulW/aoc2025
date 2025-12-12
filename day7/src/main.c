@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 #include "cbase/src/ansi_codes.h"
 #include "cbase/src/arena.c"
 #include "cbase/src/string.c"
@@ -76,14 +77,18 @@ void ArrayU32_print(ArrayU32 arr)
 
 int main()
 {
+    clock_t start;
+    clock_t end;
+    double cpu_time_used;
+
+    start       = clock();
     Arena arena = {0};
     Arena_init(&arena, Megabytes(20));
     String input = String_with_capacity(&arena, Kilobytes(400));
     FILE *file   = fopen(filename, "r"); // FILE_read_to_string(file, &input);
     if (!file) {
         printf(
-            ANSI_TEXT_B_RED "Could not open file \'%s\'\n" ANSI_RESET,
-            filename);
+            ANSI_TEXT_B_RED "Could not open file '%s'\n" ANSI_RESET, filename);
         return 1;
     }
     FILE_read_to_string(file, &input);
@@ -157,12 +162,12 @@ int main()
                     ArrayBeam_push(&beams_prev, initial);
                 }
             }
-            StringSlice_print(line_first);
+            // StringSlice_print(line_first);
         }
 
         for (U32 line_idx = 1; line_idx < lines.len; line_idx++) {
             StringSlice line = ArrayStringSlice_get_value(&lines, line_idx);
-            StringSlice_print(line);
+            // StringSlice_print(line);
 
             for (U32 i = 0; i < beams_prev.len; i++) {
                 Beam current = ArrayBeam_get_value(&beams_prev, i);
@@ -196,7 +201,7 @@ int main()
                     ArrayBeam_push(&beams_curr, current);
                 }
             }
-            ArrayBeam_print(beams_curr);
+            // ArrayBeam_print(beams_curr);
 
             ArrayBeam _beams_curr = beams_curr;
             ArrayBeam _beams_prev = beams_prev;
@@ -212,6 +217,10 @@ int main()
 
         printf(ANSI_TEXT_GREEN "part 2: %lu\n" ANSI_RESET, result_part_2);
     }
+
+    end           = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC * 1000000.0;
+    printf("Execution time: %f µs\n", cpu_time_used);
 
     Arena_free(&arena);
     fclose(file);
