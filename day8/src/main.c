@@ -19,9 +19,9 @@
 #endif
 
 typedef struct {
-    I32 x;
-    I32 y;
-    I32 z;
+    I64 x;
+    I64 y;
+    I64 z;
 } Vec3;
 
 typedef size_t CircuitId;
@@ -116,11 +116,20 @@ static void Vec3_print(Vec3 p)
 }
 
 // ----------------------------------------------------- //
+static inline U64 Vec3_squared(const Vec3 a)
+{
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
+static inline Vec3 Vec3_sub(const Vec3 a, const Vec3 b)
+{
+    return (Vec3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+// ----------------------------------------------------- //
 static inline U64 Vec3_square_distance(Vec3 a, Vec3 b)
 {
-    U64 out = ((a.x - b.x) * (a.x - b.x)) + ((a.y - b.y) * (a.y - b.y)) +
-              ((a.z - b.z) * (a.z - b.z));
-    return out;
+    return Vec3_squared(Vec3_sub(a, b));
 }
 
 // ----------------------------------------------------- //
@@ -235,15 +244,16 @@ void ArrayCircuit_merge_circuits(
         CircuitId to_move = ArrayCircuitId_pop(circuit_ids_src);
         ArrayCircuitId_push(circuit_ids_dest, to_move);
     }
-    ArrayCircuit_remove_at(circuits, src_id - 1);
+    // ArrayCircuit_remove_at(circuits, src_id - 1);
 
     for (size_t i = 0; i < circuit_ids->len; i++) {
         CircuitId *id = ArrayCircuitId_get_ref(circuit_ids, i);
         if (*id == src_id) {
             *id = dest_id;
-        } else if (*id > src_id) {
-            *id -= 1;
         }
+        // else if (*id > src_id) {
+        // *id -= 1;
+        // }
     }
     return;
 }
@@ -304,26 +314,26 @@ int main()
             ArrayCircuitId_get_value(&circuit_ids, junction.index_start);
         size_t c_id_end =
             ArrayCircuitId_get_value(&circuit_ids, junction.index_end);
-        // Junction_print(junction);
+        Junction_print(junction);
         // printf("c_id_start: %lu, c_id_end %lu\n", c_id_start, c_id_end);
 
         if (!c_id_start && !c_id_end) {
-            // printf("creating new circuit\n");
+            printf("creating circuit %lu\n", circuits.len + 1);
             ArrayCircuit_create_circuit(
                 &arena, &circuits, &circuit_ids, junction);
         } else if (!c_id_end) {
-            // printf("expanding circuit %lu\n", c_id_start);
+            printf("adding %lu circuit %lu\n", junction.index_end, c_id_start);
             ArrayCircuit_expand_circuit(
                 &circuits, &circuit_ids, c_id_start, junction.index_end);
         } else if (!c_id_start) {
-            // printf("expanding circuit %lu\n", c_id_end);
+            printf("adding %lu circuit %lu\n", junction.index_start, c_id_end);
             ArrayCircuit_expand_circuit(
                 &circuits, &circuit_ids, c_id_end, junction.index_start);
         } else if (c_id_end != c_id_start) {
-            // printf(
-            //     ANSI_BG_RED "merging circuit %lu and %lu" ANSI_RESET "\n",
-            //     c_id_start,
-            //     c_id_end);
+            printf(
+                ANSI_BG_RED "merging circuit %lu %lu" ANSI_RESET "\n",
+                c_id_start,
+                c_id_end);
             ArrayCircuit_merge_circuits(
                 &circuits, &circuit_ids, c_id_start, c_id_end);
         }
