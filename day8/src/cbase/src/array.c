@@ -1,18 +1,18 @@
 #ifndef ARRAY
 #define ARRAY
-#include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include "arena.c"
-typedef uint32_t U32;
 
 #define Array_Prototype(type)                                                  \
     typedef struct Array##type {                                               \
-        U32 len;                                                               \
-        U32 cap;                                                               \
+        size_t len;                                                            \
+        size_t cap;                                                            \
         type *items;                                                           \
     } Array##type;                                                             \
     void Array##type##_push(Array##type *self, type value);                    \
-    Array##type Array##type##_with_capacity(Arena *arena, const U32 capacity);
+    Array##type Array##type##_with_capacity(                                   \
+        Arena *arena, const size_t capacity);
 
 #define Array_Impl(type)                                                        \
     void Array##type##_push(Array##type *self, type value)                      \
@@ -26,7 +26,8 @@ typedef uint32_t U32;
         self->len += 1;                                                         \
     }                                                                           \
                                                                                 \
-    Array##type Array##type##_with_capacity(Arena *arena, const U32 capacity)   \
+    Array##type Array##type##_with_capacity(                                    \
+        Arena *arena, const size_t capacity)                                    \
     {                                                                           \
         type *memory     = (type *)Arena_alloc(arena, sizeof(type) * capacity); \
         Array##type Self = {.len = 0, .cap = capacity, .items = memory};        \
@@ -34,7 +35,7 @@ typedef uint32_t U32;
     }                                                                           \
                                                                                 \
     void Array##type##_put_value(                                               \
-        const Array##type *self, const U32 index, type value)                   \
+        const Array##type *self, const size_t index, type value)                \
     {                                                                           \
         if (index >= self->len) {                                               \
             fprintf(                                                            \
@@ -49,7 +50,7 @@ typedef uint32_t U32;
         return;                                                                 \
     }                                                                           \
                                                                                 \
-    type Array##type##_get_value(const Array##type *self, const U32 index)      \
+    type Array##type##_get_value(const Array##type *self, const size_t index)   \
     {                                                                           \
         if (index >= self->len) {                                               \
             fprintf(                                                            \
@@ -64,7 +65,7 @@ typedef uint32_t U32;
         return out;                                                             \
     }                                                                           \
                                                                                 \
-    type *Array##type##_get_ref(const Array##type *self, const U32 index)       \
+    type *Array##type##_get_ref(const Array##type *self, const size_t index)    \
     {                                                                           \
         if (index >= self->len) {                                               \
             fprintf(                                                            \
@@ -79,7 +80,7 @@ typedef uint32_t U32;
         return out;                                                             \
     }                                                                           \
                                                                                 \
-    type Array##type##_remove_at(Array##type *self, const U32 index)            \
+    type Array##type##_remove_at(Array##type *self, const size_t index)         \
     {                                                                           \
         type out = {0};                                                         \
         if (index >= self->len) {                                               \
@@ -93,7 +94,7 @@ typedef uint32_t U32;
         }                                                                       \
                                                                                 \
         out = self->items[self->len - 1];                                       \
-        for (U32 i = index; i < self->len - 1; i++) {                           \
+        for (size_t i = index; i < self->len - 1; i++) {                        \
             self->items[i] = self->items[i + 1];                                \
         }                                                                       \
         self->len -= 1;                                                         \
