@@ -1,11 +1,12 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "cbase/src/arena.c"
 #include "cbase/src/string.c"
 #include "cbase/src/array.c"
 #include "cbase/src/ansi_codes.h"
 
-#define EXAMPLE 1
+#define EXAMPLE 0
 
 #if EXAMPLE == 1
 #define FILENAME "test.txt"
@@ -42,6 +43,9 @@ Array_Prototype(Junction);
 Array_Impl(Junction);
 
 typedef ArrayCircuitId Circuit;
+
+Array_Prototype(U64);
+Array_Impl(U64);
 
 Array_Prototype(Circuit);
 Array_Impl(Circuit);
@@ -148,6 +152,13 @@ static void ArrayJunction_sort_distance(ArrayJunction *junctions)
     return;
 }
 
+int Junction_order_asc(const void *a, const void *b)
+{
+    Junction ja = *(Junction *)a;
+    Junction jb = *(Junction *)b;
+    return ja.distance > jb.distance ? 1 : -1;
+}
+
 // ----------------------------------------------------- //
 static ArrayJunction get_sorted_junctions(Arena *arena, ArrayVec3 boxes)
 {
@@ -166,7 +177,10 @@ static ArrayJunction get_sorted_junctions(Arena *arena, ArrayVec3 boxes)
         }
     }
 
-    ArrayJunction_sort_distance(&junctions);
+    printf("num junctions: %lu", junctions.len);
+    printf("sorting...\n");
+    qsort(junctions.items, junctions.len, sizeof(Junction), Junction_order_asc);
+    // ArrayJunction_sort_distance(&junctions);
     return junctions;
 }
 
@@ -188,6 +202,7 @@ void ArrayCircuit_create_circuit(
     return;
 }
 
+// ----------------------------------------------------- //
 void ArrayCircuit_expand_circuit(
     ArrayCircuit *circuits,
     ArrayCircuitId *ids,
@@ -202,12 +217,50 @@ void ArrayCircuit_expand_circuit(
     return;
 }
 
+// ----------------------------------------------------- //
+void ArrayCircuit_merge_circuits(
+    ArrayCircuit *circuits,
+    ArrayCircuitId *circuit_ids,
+    CircuitId c_id_start,
+    CircuitId c_id_end)
+{
+    CircuitId dest_id = (c_id_start < c_id_end) ? c_id_start : c_id_end;
+    CircuitId src_id  = (c_id_start < c_id_end) ? c_id_end : c_id_start;
+
+    ArrayCircuitId *circuit_ids_dest =
+        ArrayCircuit_get_ref(circuits, dest_id - 1);
+    ArrayCircuitId *circuit_ids_src =
+        ArrayCircuit_get_ref(circuits, src_id - 1);
+    while (circuit_ids_src->len) {
+        CircuitId to_move = ArrayCircuitId_pop(circuit_ids_src);
+        ArrayCircuitId_push(circuit_ids_dest, to_move);
+    }
+    ArrayCircuit_remove_at(circuits, src_id - 1);
+
+    for (size_t i = 0; i < circuit_ids->len; i++) {
+        CircuitId *id = ArrayCircuitId_get_ref(circuit_ids, i);
+        if (*id == src_id) {
+            *id = dest_id;
+        } else if (*id > src_id) {
+            *id -= 1;
+        }
+    }
+    return;
+}
+
+int U64_order_desc(const void *a, const void *b)
+{
+    U64 num_a = *(U64 *)a;
+    U64 num_b = *(U64 *)b;
+    return num_a > num_b ? -1 : 1;
+}
+
 int main()
 {
 
     Arena arena = {0};
-    Arena_init(&arena, Megabytes(2));
-    String input = String_with_capacity(&arena, Kilobytes(100));
+    Arena_init(&arena, Megabytes(20));
+    String input = String_with_capacity(&arena, Kilobytes(400));
     FILE *file   = fopen(FILENAME, "r");
     if (!file) {
         printf("could not open file!");
@@ -225,16 +278,16 @@ int main()
 
     for (size_t i = 0; i < lines.len; i++) {
         StringSlice line = ArrayStringSlice_get_value(&lines, i);
-        StringSlice_print(line);
+        // StringSlice_print(line);
         Vec3 box = Vec3_from_sslice(line);
-        Vec3_print(box);
+        // Vec3_print(box);
         ArrayVec3_push(&boxes, box);
     }
 
     ArrayJunction junctions = get_sorted_junctions(&arena, boxes);
     for (size_t i = 0; i < junctions.len; i++) {
         Junction j = ArrayJunction_get_value(&junctions, i);
-        Junction_print(j);
+        // Junction_print(j);
     }
 
     ArrayCircuitId circuit_ids =
@@ -243,7 +296,7 @@ int main()
         ArrayCircuitId_push(&circuit_ids, 0);
     }
 
-    printf(ANSI_BG_RED ANSI_TEXT_BLACK "starting ...\n" ANSI_RESET);
+    printf(ANSI_BG_RED ANSI_TEXT_BLACK "starting ..." ANSI_RESET "\n");
     ArrayCircuit circuits = ArrayCircuit_with_capacity(&arena, PAIRS);
     for (size_t i = 0; i < PAIRS; i++) {
         Junction junction = ArrayJunction_get_value(&junctions, i);
@@ -251,38 +304,57 @@ int main()
             ArrayCircuitId_get_value(&circuit_ids, junction.index_start);
         size_t c_id_end =
             ArrayCircuitId_get_value(&circuit_ids, junction.index_end);
-        Junction_print(junction);
-        printf("c_id_start: %lu, c_id_end %lu\n", c_id_start, c_id_end);
+        // Junction_print(junction);
+        // printf("c_id_start: %lu, c_id_end %lu\n", c_id_start, c_id_end);
 
         if (!c_id_start && !c_id_end) {
-            printf("creating new circuit\n");
+            // printf("creating new circuit\n");
             ArrayCircuit_create_circuit(
                 &arena, &circuits, &circuit_ids, junction);
         } else if (!c_id_end) {
-            printf("expanding circuit %lu\n", c_id_start);
+            // printf("expanding circuit %lu\n", c_id_start);
             ArrayCircuit_expand_circuit(
                 &circuits, &circuit_ids, c_id_start, junction.index_end);
         } else if (!c_id_start) {
-            printf("expanding circuit %lu\n", c_id_end);
+            // printf("expanding circuit %lu\n", c_id_end);
             ArrayCircuit_expand_circuit(
                 &circuits, &circuit_ids, c_id_end, junction.index_start);
-            // } else if (c_id_end != c_id_start) {
-            //     ArrayCircuit_merge_circuits(&circuits, c_id_start, c_id_end);
+        } else if (c_id_end != c_id_start) {
+            // printf(
+            //     ANSI_BG_RED "merging circuit %lu and %lu" ANSI_RESET "\n",
+            //     c_id_start,
+            //     c_id_end);
+            ArrayCircuit_merge_circuits(
+                &circuits, &circuit_ids, c_id_start, c_id_end);
         }
 
-        printf("-------\n\n");
+        // printf("Circuits : %lu\n", circuits.len);
+        // for (size_t i = 0; i < circuits.len; i++) {
+        //     Circuit current = ArrayCircuit_get_value(&circuits, i);
+        //     printf("Circuit %lu: <", i + 1);
+        //     for (size_t j = 0; j < current.len; j++) {
+        //         CircuitId id = ArrayCircuitId_get_value(&current, j);
+        //         printf("%lu, ", id);
+        //     }
+        //     printf("> len: %lu\n", current.len);
+        // }
+        // for (size_t i = 0; i < circuit_ids.len; i++) {
+        //     CircuitId id = ArrayCircuitId_get_value(&circuit_ids, i);
+        //     printf("<%lu, %lu>  ", i, id);
+        // }
+        // printf("\n-------\n\n");
     }
 
-    printf("Circuits : %lu\n", circuits.len);
+    ArrayU64 circuit_sizes = ArrayU64_with_capacity(&arena, circuits.len);
     for (size_t i = 0; i < circuits.len; i++) {
         Circuit current = ArrayCircuit_get_value(&circuits, i);
-        printf("Circuit %lu: <", i);
-        for (size_t j = 0; j < current.len; j++) {
-            CircuitId id = ArrayCircuitId_get_value(&current, j);
-            printf("%lu, ", id);
-        }
-        printf(">\n");
+        ArrayU64_push(&circuit_sizes, current.len);
     }
+
+    qsort(circuit_sizes.items, circuit_sizes.len, sizeof(U64), U64_order_desc);
+    U64 result_part_1 = circuit_sizes.items[0] * circuit_sizes.items[1] *
+                        circuit_sizes.items[2];
+    printf(ANSI_TEXT_B_RED "result_part_1: %lu\n" ANSI_RESET, result_part_1);
 
     Arena_free(&arena);
     return 0;
