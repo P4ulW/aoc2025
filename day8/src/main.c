@@ -5,7 +5,9 @@
 #include "cbase/src/string.c"
 #include "cbase/src/array.c"
 #include "cbase/src/ansi_codes.h"
+#include <time.h>
 
+#define SECONDS_TO_MICROSECONDS 1000000.0
 #define EXAMPLE 0
 
 #if EXAMPLE == 1
@@ -320,6 +322,12 @@ U64 add_junctions(
 
 int main()
 {
+    struct timespec start, end;
+    double elapsed_time_us;
+    if (clock_gettime(CLOCK_MONOTONIC, &start) == -1) {
+        perror("clock_gettime (start)");
+        return 1;
+    }
 
     Arena arena = {0};
     Arena_init(&arena, Megabytes(20));
@@ -382,6 +390,18 @@ int main()
         PAIRS,
         NUM_BOXES * NUM_BOXES / 2);
     printf(ANSI_TEXT_B_RED "result_part_2: %lu\n" ANSI_RESET, result_part_2);
+
+    if (clock_gettime(CLOCK_MONOTONIC, &end) == -1) {
+        perror("clock_gettime (end)");
+        return 1;
+    }
+    double sec_diff = (double)(end.tv_sec - start.tv_sec);
+    double nsec_diff_to_sec =
+        (double)(end.tv_nsec - start.tv_nsec) / 1000000000.0;
+    double total_time_sec = sec_diff + nsec_diff_to_sec;
+    elapsed_time_us       = total_time_sec * SECONDS_TO_MICROSECONDS;
+
+    printf("Execution took: %.2f milliseconds (ms)\n", elapsed_time_us / 1000);
 
     Arena_free(&arena);
     return 0;
