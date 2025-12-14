@@ -18,7 +18,7 @@
     void Array##type##_push(Array##type *self, type value)                      \
     {                                                                           \
         if (self->len == self->cap) {                                           \
-            fprintf(stderr, "No space left in Array##type\n");                  \
+            fprintf(stderr, "No space left in Array of type %s\n", #type);      \
             exit(-1);                                                           \
         }                                                                       \
                                                                                 \
