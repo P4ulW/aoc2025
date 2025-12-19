@@ -106,13 +106,16 @@ int main()
     ArrayStringSlice_pop(&lines);
     ArrayTile tiles = ArrayTile_with_capacity(&arena, lines.len);
 
+    FILE *file_handle = fopen("points.csv", "w");
     for (size_t i = 0; i < lines.len; i++) {
         StringSlice line = lines.items[i];
         // StringSlice_print(line);
         Tile tile = Tile_from_sslice(line);
         Tile_print(tile);
         ArrayTile_push(&tiles, tile);
+        fprintf(file_handle, "%u;%u\n", tile.x, tile.y);
     }
+    fclose(file_handle);
 
     U64 max_area = 0;
     for (size_t i = 0; i < tiles.len - 1; i++) {
