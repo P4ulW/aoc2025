@@ -1,13 +1,14 @@
 #include <stddef.h>
 #include <stdio.h>
+#include "bits/types/siginfo_t.h"
 #include "cbase/src/ansi_codes.h"
 #include "cbase/src/arena.c"
 #include "cbase/src/array.c"
 #include "cbase/src/string.c"
 
-#define EXAMPLE 0
+#define EXAMPLE 1
 
-#if EXAMPLE == 1
+#if EXAMPLE == 0
 #define FILENAME "test.txt"
 #else
 #define FILENAME "input.txt"
@@ -17,6 +18,12 @@ typedef struct Tile Tile;
 struct Tile {
     U32 x;
     U32 y;
+};
+
+typedef struct Rectangle Rectangle;
+struct Rectangle {
+    Tile c1;
+    Tile c2;
 };
 
 Array_Prototype(Tile);
@@ -89,6 +96,64 @@ U64 get_area_between_tiles(Tile tile_from, Tile tile_to)
     return area;
 }
 
+static void Rectangle_normalize(Rectangle *self)
+{
+    U32 x1 = (self->c1.x < self->c2.x) ? self->c1.x : self->c2.x;
+    U32 x2 = (self->c1.x < self->c2.x) ? self->c2.x : self->c1.x;
+
+    U32 y1 = (self->c1.y < self->c2.y) ? self->c1.y : self->c2.y;
+    U32 y2 = (self->c1.y < self->c2.y) ? self->c2.y : self->c1.y;
+
+    self->c1.x = x1;
+    self->c1.y = y1;
+    self->c2.x = x2;
+    self->c2.y = y2;
+}
+
+static B32 Rectangles_intersect(Rectangle rect, Rectangle other)
+{
+    Rectangle_normalize(&rect);
+    Rectangle_normalize(&other);
+
+    B32 a = rect.c2.x <= other.c1.x;
+    if (a) {
+        return 0;
+    }
+    B32 b = rect.c1.x >= other.c2.x;
+    if (b) {
+        return 0;
+    }
+    B32 c = rect.c2.y <= other.c1.y;
+    if (c) {
+        return 0;
+    }
+    B32 d = rect.c1.y >= other.c2.y;
+    if (d) {
+        return 0;
+    }
+
+    return 1;
+}
+
+static U32 Rectangle_intersects_with_others(ArrayTile tiles, Rectangle rect)
+{
+
+    for (size_t i = 0; i < tiles.len - 2; i++) {
+        if (i + 2 == 248) {
+            continue;
+        }
+
+        Tile tile_from  = ArrayTile_get_value(&tiles, i);
+        Tile tile_to    = ArrayTile_get_value(&tiles, i + 2);
+        Rectangle other = {tile_to, tile_from};
+        if (Rectangles_intersect(rect, other)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int main()
 {
 
@@ -106,16 +171,16 @@ int main()
     ArrayStringSlice_pop(&lines);
     ArrayTile tiles = ArrayTile_with_capacity(&arena, lines.len);
 
-    FILE *file_handle = fopen("points.csv", "w");
+    // FILE *file_handle = fopen("points.csv", "w");
     for (size_t i = 0; i < lines.len; i++) {
         StringSlice line = lines.items[i];
         // StringSlice_print(line);
         Tile tile = Tile_from_sslice(line);
-        Tile_print(tile);
+        // Tile_print(tile);
         ArrayTile_push(&tiles, tile);
-        fprintf(file_handle, "%u;%u\n", tile.x, tile.y);
+        // fprintf(file_handle, "%u;%u\n", tile.x, tile.y);
     }
-    fclose(file_handle);
+    // fclose(file_handle);
 
     U64 max_area = 0;
     for (size_t i = 0; i < tiles.len - 1; i++) {
@@ -129,7 +194,59 @@ int main()
         }
     }
 
-    printf(ANSI_TEXT_GREEN "part 1: %lu\n", max_area);
+    printf(ANSI_TEXT_GREEN "part 1: %lu\n" ANSI_RESET, max_area);
+
+    max_area = 0;
+    {
+        // upper half
+        const size_t k = 248;
+        Tile tile_from = ArrayTile_get_value(&tiles, k);
+        size_t i       = k - 200; // somewhere above
+        for (; ArrayTile_get_value(&tiles, i).x < tile_from.x; i--);
+        Tile tile_to = ArrayTile_get_value(&tiles, i);
+        size_t j     = k - 2; // first on the circle before k
+        U32 ymax     = tile_to.y;
+        U32 xmin     = tile_to.x;
+
+        Tile to_check = ArrayTile_get_value(&tiles, j);
+        while (to_check.y <= ymax) {
+            if (to_check.x >= xmin) {
+                U64 area = get_area_between_tiles(tile_from, to_check);
+                if (area > max_area) {
+                    max_area = area;
+                }
+            }
+            to_check = ArrayTile_get_value(&tiles, --j);
+            xmin     = to_check.x;
+        }
+    }
+
+    {
+        // lower half
+        const size_t k = 249;
+        Tile tile_from = ArrayTile_get_value(&tiles, k);
+        size_t i       = k + 200; // somewhere above
+        for (; ArrayTile_get_value(&tiles, i).x < tile_from.x; i++);
+        Tile tile_to = ArrayTile_get_value(&tiles, i);
+        size_t j     = k + 2; // first on the circle before k
+        U32 ymax     = tile_to.y;
+        U32 xmin     = tile_to.x;
+
+        Tile to_check = ArrayTile_get_value(&tiles, j);
+        while (to_check.y >= ymax) {
+            if (to_check.x >= xmin) {
+                U64 area = get_area_between_tiles(tile_from, to_check);
+                if (area > max_area) {
+                    max_area = area;
+                }
+            }
+
+            to_check = ArrayTile_get_value(&tiles, ++j);
+            xmin     = to_check.x;
+        }
+    }
+
+    printf(ANSI_TEXT_GREEN "part 2: %lu\n" ANSI_RESET, max_area);
 
     Arena_free(&arena);
     return 0;
