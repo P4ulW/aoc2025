@@ -17,7 +17,7 @@ rm .git -rvf
 popd
 popd
 echo $'#include <stddef.h>\n#include <stdio.h>\n#include "cbase/src/ansi_codes.h"\n#include "cbase/src/arena.c"\n#include "cbase/src/array.c"\n#include "cbase/src/string.c"\n\n#define EXAMPLE 1\n\n#if EXAMPLE == 0\n#define FILENAME "test.txt"\n#else\n#define FILENAME "input.txt"\n#endif\n\nint main() {\n\treturn 0;\n}' >> src/main.c
-echo $'default:\n\tgcc -g -O3 src/main.c -o out' >> Makefile
+echo $'default:\n\tgcc -g -O3 src/main.c -Wall -march=native -o  out' >> Makefile
 popd
 echo "$dirname successfully created"
 exit 0
