@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <stdio.h>
-#include "bits/types/siginfo_t.h"
 #include "cbase/src/ansi_codes.h"
 #include "cbase/src/arena.c"
 #include "cbase/src/array.c"
