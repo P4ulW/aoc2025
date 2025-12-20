@@ -59,8 +59,8 @@ int main()
 
     Arena arena = {0};
     Arena_init(&arena, Megabytes(1));
-    String input           = String_with_capacity(&arena, Kilobytes(2));
-    ArrayStringSlice lines = ArrayStringSlice_with_capacity(&arena, 100);
+    String input           = String_with_capacity(&arena, Kilobytes(20));
+    ArrayStringSlice lines = ArrayStringSlice_with_capacity(&arena, 300);
     FILE *file             = fopen(FILENAME, "rb");
     FILE_read_to_string(file, &input);
     fclose(file);
@@ -68,10 +68,10 @@ int main()
     StringSlice_split_to_slices(&lines, input_as_slice, '\n');
     ArrayStringSlice_pop(&lines);
 
-    ArrayStringSlice input_parts = ArrayStringSlice_with_capacity(&arena, 20);
+    ArrayStringSlice input_parts = ArrayStringSlice_with_capacity(&arena, 100);
     for (size_t i = 0; i < lines.len; i++) {
         StringSlice line = ArrayStringSlice_get_value(&lines, i);
-        StringSlice_print(line);
+        // StringSlice_print(line);
         Manual manual = Manual_from_sslice(&arena, line);
         Manual_print(manual);
     }
