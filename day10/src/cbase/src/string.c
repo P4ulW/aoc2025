@@ -116,6 +116,37 @@ B32 String_equal(const String self, const String needle)
 }
 
 // ------------------------------------------------------ //
+char StringSlice_get(const StringSlice self, const U32 index)
+{
+    if (index < 0 || index >= self.len) {
+        fprintf(
+            stderr,
+            "Could not get char in String at index %d due to out of bounds\n",
+            index);
+        fflush(stderr);
+        return 0;
+    }
+
+    return self.items[index];
+}
+
+// ------------------------------------------------------ //
+B32 StringSlice_equal(const StringSlice self, const StringSlice needle)
+{
+    if (self.len != needle.len) {
+        return 0;
+    }
+
+    for (int i = 0; i < self.len; i++) {
+        if (StringSlice_get(self, i) != StringSlice_get(needle, i)) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+// ------------------------------------------------------ //
 static void StringSlice_split_to_slices(
     ArrayStringSlice *slices, const StringSlice to_split, const char split_char)
 {
