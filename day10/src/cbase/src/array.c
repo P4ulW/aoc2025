@@ -106,7 +106,8 @@ typedef uint32_t U32;
         if (!self->len) {                                                       \
             fprintf(                                                            \
                 stderr,                                                         \
-                "trying to remove from empty array! Array type: %s" #type);     \
+                "trying to remove from empty array! Array type: %s",            \
+                #type);                                                         \
             return out;                                                         \
         }                                                                       \
                                                                                 \
