@@ -11,7 +11,7 @@
 
 #define EXAMPLE 0
 
-#if EXAMPLE == 0
+#if EXAMPLE == 1
 #define FILENAME "test.txt"
 #else
 #define FILENAME "input.txt"
@@ -63,8 +63,8 @@ void QueueIS_push(QueueIS *q, IndicatorState state)
         return;
     }
 
-    fprintf(stderr, "pushing to %lu: ", q->tail);
-    String_print(state.lights);
+    // fprintf(stderr, "pushing to %lu: ", q->tail);
+    // String_print(state.lights);
 
     q->items[q->tail] = state;
     q->tail           = (q->tail + 1) % q->cap;
@@ -86,10 +86,10 @@ IndicatorState QueueIS_pop(QueueIS *q)
         return out;
     }
 
-    fprintf(stderr, "popping from %lu: ", q->head);
+    // fprintf(stderr, "popping from %lu: ", q->head);
 
     out = q->items[q->head];
-    String_print(out.lights);
+    // String_print(out.lights);
 
     q->head = (q->head + 1) % q->cap;
     q->size -= 1;
@@ -109,9 +109,10 @@ QueueIS QueueIS_new(Arena *arena, size_t capacity)
 IndicatorState IndicatorState_copy(Arena *arena, IndicatorState state)
 {
     IndicatorState new = {};
+    new.num_presses    = state.num_presses;
     new.lights         = String_with_capacity(arena, state.lights.len);
+    new.lights.len     = state.lights.len;
     memcpy(new.lights.items, state.lights.items, state.lights.len);
-    memcpy(&new, &state, sizeof(IndicatorState));
     return new;
 }
 
@@ -173,8 +174,10 @@ Manual Manual_from_sslice(Arena *arena, StringSlice line)
 {
     ArrayStringSlice parts = ArrayStringSlice_with_capacity(arena, 20);
     StringSlice_split_to_slices(&parts, line, ' ');
-    Manual out      = {0};
-    out.lights      = ArrayStringSlice_remove_at(&parts, 0);
+    Manual out = {0};
+    out.lights = ArrayStringSlice_remove_at(&parts, 0);
+    out.lights.items += 1;
+    out.lights.len -= 2;
     out.joltage_req = ArrayStringSlice_pop(&parts);
 
     ArrayWiring wirings = ArrayWiring_with_capacity(arena, parts.len);
@@ -235,13 +238,14 @@ U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
     U32 result = 0;
     Temp temp  = Temp_start(arena);
 
-    QueueIS queue  = QueueIS_new(temp.arena, 100);
+    QueueIS queue  = QueueIS_new(temp.arena, 100000000);
     String all_off = String_with_capacity(temp.arena, manual.lights.len);
     for (size_t i = 0; i < manual.lights.len; i++) {
         String_push(&all_off, '.');
     }
 
     // classic bfs
+    B32 sucess                   = 0;
     IndicatorState state_initial = {all_off, 0};
     QueueIS_push(&queue, state_initial);
     while (queue.size) {
@@ -249,6 +253,7 @@ U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
         StringSlice lights = {state_curr.lights.items, state_curr.lights.len};
         if (StringSlice_equal(lights, manual.lights)) {
             result = state_curr.num_presses;
+            sucess = 1;
             break;
         }
 
@@ -265,15 +270,20 @@ U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
             QueueIS_push(&queue, state_next);
         }
     }
+
     Temp_end(temp);
-    return result;
+    if (sucess) {
+        return result;
+    } else {
+        return -1;
+    }
 }
 
 // ----------------------------------------------------- //
 int main()
 {
     Arena arena = {0};
-    Arena_init(&arena, Megabytes(1));
+    Arena_init(&arena, Megabytes(10000));
     String input           = String_with_capacity(&arena, Kilobytes(20));
     ArrayStringSlice lines = ArrayStringSlice_with_capacity(&arena, 300);
     FILE *file             = fopen(FILENAME, "rb");
@@ -290,13 +300,18 @@ int main()
         ArrayManual_push(&manuals, manual);
     }
 
+    U32 result_part_1 = 0;
+
     for (size_t i = 0; i < manuals.len; i++) {
         Manual manual = ArrayManual_get_value(&manuals, i);
-        Manual_print(manual);
+        // Manual_print(manual);
         U32 result = 0;
-        result     = Manual_find_fewest_presses(&arena, manual, 3);
+        result     = Manual_find_fewest_presses(&arena, manual, 8);
         printf("result: %u\n", result);
+        result_part_1 += result;
     }
+
+    printf("result part 1: %u\n", result_part_1);
 
     return 0;
 }
