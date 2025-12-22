@@ -9,7 +9,7 @@
 #include "cbase/src/string.c"
 #include "cbase/src/file.c"
 
-#define EXAMPLE 0
+#define EXAMPLE 1
 
 #if EXAMPLE == 1
 #define FILENAME "test.txt"
@@ -28,7 +28,7 @@ Array_Impl(Wiring);
 typedef struct Manual Manual;
 struct Manual {
     StringSlice lights;
-    StringSlice joltage_req;
+    ArrayU32 joltage_req;
     ArrayWiring wirings;
 };
 
@@ -41,6 +41,12 @@ struct IndicatorState {
     U32 num_presses;
 };
 
+typedef struct JoltageState JoltageState;
+struct JoltageState {
+    ArrayU32 joltages;
+    U32 num_presses;
+};
+
 typedef struct QueueIS QueueIS;
 struct QueueIS {
     IndicatorState *items;
@@ -49,6 +55,82 @@ struct QueueIS {
     size_t head;
     size_t tail;
 };
+
+typedef struct QueueJS QueueJS;
+struct QueueJS {
+    JoltageState *items;
+    size_t cap;
+    size_t size;
+    size_t head;
+    size_t tail;
+};
+
+// ----------------------------------------------------- //
+ArrayU32 ArrayU32_from_joltage_slice(Arena *arena, StringSlice slice)
+{
+    Temp temp         = Temp_start(arena);
+    ArrayU32 joltages = {0};
+    slice.items += 1;
+    slice.len -= 1;
+
+    Temp_end(temp);
+    return joltages;
+}
+
+// ----------------------------------------------------- //
+void QueueJS_push(QueueJS *q, JoltageState state)
+{
+    if (q->size == q->cap) {
+        fprintf(
+            stderr,
+            ANSI_TEXT_RED "Error: " ANSI_RESET
+                          "QueueJS is full: size: %lu, cap: %lu\n",
+            q->size,
+            q->cap);
+        return;
+    }
+
+    // fprintf(stderr, "pushing to %lu: ", q->tail);
+    // String_print(state.lights);
+
+    q->items[q->tail] = state;
+    q->tail           = (q->tail + 1) % q->cap;
+    q->size += 1;
+    return;
+}
+
+// ----------------------------------------------------- //
+JoltageState QueueJS_pop(QueueJS *q)
+{
+    JoltageState out = {0};
+    if (q->size == 0) {
+        fprintf(
+            stderr,
+            ANSI_TEXT_RED "Error: " ANSI_RESET
+                          "QueueJS is empty: size: %lu, cap: %lu",
+            q->size,
+            q->cap);
+        return out;
+    }
+
+    // fprintf(stderr, "popping from %lu: ", q->head);
+
+    out = q->items[q->head];
+    // String_print(out.lights);
+
+    q->head = (q->head + 1) % q->cap;
+    q->size -= 1;
+    return out;
+}
+
+// ----------------------------------------------------- //
+QueueJS QueueJS_new(Arena *arena, size_t capacity)
+{
+    QueueJS new = {0};
+    new.cap     = capacity;
+    new.items   = Arena_alloc(arena, sizeof(JoltageState) * capacity);
+    return new;
+}
 
 // ----------------------------------------------------- //
 void QueueIS_push(QueueIS *q, IndicatorState state)
@@ -178,7 +260,8 @@ Manual Manual_from_sslice(Arena *arena, StringSlice line)
     out.lights = ArrayStringSlice_remove_at(&parts, 0);
     out.lights.items += 1;
     out.lights.len -= 2;
-    out.joltage_req = ArrayStringSlice_pop(&parts);
+    out.joltage_req =
+        ArrayU32_from_joltage_slice(arena, ArrayStringSlice_pop(&parts));
 
     ArrayWiring wirings = ArrayWiring_with_capacity(arena, parts.len);
     for (size_t i = 0; i < parts.len; i++) {
@@ -196,7 +279,7 @@ void Manual_print(Manual manual)
     printf("Manual: <\nlight:       ");
     StringSlice_print(manual.lights);
     printf("joltage_req: ");
-    StringSlice_print(manual.joltage_req);
+    // StringSlice_print(manual.joltage_req);
     for (size_t i = 0; i < manual.wirings.len; i++) {
         if (i == 0) {
             printf("wiring:      ");
