@@ -8,8 +8,9 @@
 #include "cbase/src/array.c"
 #include "cbase/src/string.c"
 #include "cbase/src/file.c"
+#include "combinations.c"
 
-#define EXAMPLE 1
+#define EXAMPLE 0
 
 #if EXAMPLE == 1
 #define FILENAME "test.txt"
@@ -66,12 +67,34 @@ struct QueueJS {
 };
 
 // ----------------------------------------------------- //
+U32 U32_from_sslice(StringSlice slice)
+{
+    U32 out = 0;
+    for (size_t i = 0; i < slice.len; i++) {
+        char current = slice.items[i];
+        if (current < '0' || current > '9') {
+            break;
+        }
+
+        out *= 10;
+        out += current - '0';
+    }
+    return out;
+}
+
+// ----------------------------------------------------- //
 ArrayU32 ArrayU32_from_joltage_slice(Arena *arena, StringSlice slice)
 {
+    ArrayU32 joltages = ArrayU32_with_capacity(arena, 20);
     Temp temp         = Temp_start(arena);
-    ArrayU32 joltages = {0};
-    slice.items += 1;
-    slice.len -= 1;
+    slice.items += 1; // ignore first bracket
+    slice.len -= 2;   // ignore last bracket as well
+    ArrayStringSlice nums = ArrayStringSlice_with_capacity(temp.arena, 20);
+    StringSlice_split_to_slices(&nums, slice, ',');
+    for (size_t i = 0; i < nums.len; i++) {
+        StringSlice num_as_slice = nums.items[i];
+        ArrayU32_push(&joltages, U32_from_sslice(num_as_slice));
+    }
 
     Temp_end(temp);
     return joltages;
@@ -210,7 +233,7 @@ void Wiring_print(Wiring wiring)
 }
 
 // ----------------------------------------------------- //
-U32 U32_from_sslice(StringSlice slice)
+U32 U32_single_from_sslice(StringSlice slice)
 {
     U32 out = 0;
     for (size_t i = 0; i < slice.len; i++) {
@@ -243,7 +266,7 @@ Wiring Wiring_from_sslice(Arena *arena, StringSlice slice)
             index += 1;
         } else {
             StringSlice to_parse = {slice.items + index, slice.len - index};
-            U32 num              = U32_from_sslice(to_parse);
+            U32 num              = U32_single_from_sslice(to_parse);
             ArrayU32_push(&new, num);
             index += 1;
         }
@@ -278,8 +301,13 @@ void Manual_print(Manual manual)
 {
     printf("Manual: <\nlight:       ");
     StringSlice_print(manual.lights);
-    printf("joltage_req: ");
-    // StringSlice_print(manual.joltage_req);
+    printf("joltage_req: " ANSI_TEXT_YELLOW);
+    for (size_t i = 0; i < manual.joltage_req.len; i++) {
+        U32 joltage = ArrayU32_get_value(&manual.joltage_req, i);
+        printf("%u ", joltage);
+    }
+    printf(ANSI_RESET "\n");
+
     for (size_t i = 0; i < manual.wirings.len; i++) {
         if (i == 0) {
             printf("wiring:      ");
@@ -321,46 +349,87 @@ U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
     U32 result = 0;
     Temp temp  = Temp_start(arena);
 
-    QueueIS queue  = QueueIS_new(temp.arena, 100000000);
     String all_off = String_with_capacity(temp.arena, manual.lights.len);
     for (size_t i = 0; i < manual.lights.len; i++) {
         String_push(&all_off, '.');
     }
 
-    // classic bfs
-    B32 sucess                   = 0;
-    IndicatorState state_initial = {all_off, 0};
-    QueueIS_push(&queue, state_initial);
-    while (queue.size) {
-        IndicatorState state_curr = QueueIS_pop(&queue);
-        StringSlice lights = {state_curr.lights.items, state_curr.lights.len};
-        if (StringSlice_equal(lights, manual.lights)) {
-            result = state_curr.num_presses;
-            sucess = 1;
+    for (int k = 0; k < manual.wirings.len; k++) {
+        if (result) {
             break;
         }
 
-        if (state_curr.num_presses == iter_max) {
-            continue;
-        }
+        Combinations comb = Combinations_init(arena, manual.wirings.len, k);
 
-        for (size_t i = 0; i < manual.wirings.len; i++) {
-            Wiring wiring = ArrayWiring_get_value(&manual.wirings, i);
-            IndicatorState state_next =
-                IndicatorState_copy(temp.arena, state_curr);
-            IndicatorState_press_apply(&state_next, wiring);
-            state_next.num_presses += 1;
-            QueueIS_push(&queue, state_next);
+        while (comb.index) {
+            memset(all_off.items, '.', all_off.len);
+            IndicatorState state = {.lights = all_off, 0};
+            for (int i = 0; i < comb.stride; i++) {
+                int index     = comb.index[i];
+                Wiring wiring = ArrayWiring_get_value(&manual.wirings, index);
+                IndicatorState_press_apply(&state, wiring);
+            }
+
+            StringSlice lights = {state.lights.items, state.lights.len};
+            if (StringSlice_equal(lights, manual.lights)) {
+                result = k;
+                break;
+            }
+            Combinations_next(&comb);
         }
     }
-
+    printf("needed %u\n", result);
     Temp_end(temp);
-    if (sucess) {
-        return result;
-    } else {
-        return -1;
-    }
+    return result;
 }
+
+// // ----------------------------------------------------- //
+// U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
+// {
+//     U32 result = 0;
+//     Temp temp  = Temp_start(arena);
+//
+//     QueueIS queue  = QueueIS_new(temp.arena, 100000000);
+//     String all_off = String_with_capacity(temp.arena, manual.lights.len);
+//     for (size_t i = 0; i < manual.lights.len; i++) {
+//         String_push(&all_off, '.');
+//     }
+//
+//     // classic bfs
+//     B32 sucess                   = 0;
+//     IndicatorState state_initial = {all_off, 0};
+//     QueueIS_push(&queue, state_initial);
+//     while (queue.size) {
+//         IndicatorState state_curr = QueueIS_pop(&queue);
+//         StringSlice lights = {state_curr.lights.items,
+//         state_curr.lights.len}; if (StringSlice_equal(lights, manual.lights))
+//         {
+//             result = state_curr.num_presses;
+//             sucess = 1;
+//             break;
+//         }
+//
+//         if (state_curr.num_presses == iter_max) {
+//             continue;
+//         }
+//
+//         for (size_t i = 0; i < manual.wirings.len; i++) {
+//             Wiring wiring = ArrayWiring_get_value(&manual.wirings, i);
+//             IndicatorState state_next =
+//                 IndicatorState_copy(temp.arena, state_curr);
+//             IndicatorState_press_apply(&state_next, wiring);
+//             state_next.num_presses += 1;
+//             QueueIS_push(&queue, state_next);
+//         }
+//     }
+//
+//     Temp_end(temp);
+//     if (sucess) {
+//         return result;
+//     } else {
+//         return -1;
+//     }
+// }
 
 // ----------------------------------------------------- //
 int main()
@@ -379,7 +448,8 @@ int main()
     ArrayManual manuals = ArrayManual_with_capacity(&arena, 300);
     for (size_t i = 0; i < lines.len; i++) {
         StringSlice line = ArrayStringSlice_get_value(&lines, i);
-        Manual manual    = Manual_from_sslice(&arena, line);
+        StringSlice_print(line);
+        Manual manual = Manual_from_sslice(&arena, line);
         ArrayManual_push(&manuals, manual);
     }
 
@@ -387,14 +457,23 @@ int main()
 
     for (size_t i = 0; i < manuals.len; i++) {
         Manual manual = ArrayManual_get_value(&manuals, i);
-        // Manual_print(manual);
-        U32 result = 0;
-        result     = Manual_find_fewest_presses(&arena, manual, 8);
-        printf("result: %u\n", result);
+        U32 result    = 0;
+        Manual_print(manual);
+        result = Manual_find_fewest_presses(&arena, manual, 8);
+        // printf("result: %u\n", result);
         result_part_1 += result;
     }
 
-    printf("result part 1: %u\n", result_part_1);
+    printf(ANSI_TEXT_GREEN "result part 1: %u\n" ANSI_RESET, result_part_1);
+
+    U64 result_part_2 = 0;
+    for (size_t i = 0; i < manuals.len; i++) {
+        Manual manual = ArrayManual_get_value(&manuals, i);
+        U64 result    = 0;
+        result_part_2 += result;
+    }
+
+    printf(ANSI_TEXT_GREEN "result part 2: %lu\n" ANSI_RESET, result_part_2);
 
     return 0;
 }

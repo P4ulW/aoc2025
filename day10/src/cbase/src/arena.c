@@ -29,7 +29,7 @@ void Arena_init(Arena *arena, size_t size_in_bytes)
 {
     void *base_mem = malloc(size_in_bytes);
     if (base_mem == NULL) {
-        printf("Could not alloc arena with size %d\n", size_in_bytes);
+        printf("Could not alloc arena with size %lu\n", size_in_bytes);
         exit(1);
     }
 
@@ -62,7 +62,7 @@ void Arena_free(Arena *arena)
 void *Arena_alloc(Arena *arena, size_t num_bytes)
 {
     if (arena->capacity - arena->size - num_bytes < 0) {
-        printf("No space in arena to alloc %d bytes\n", num_bytes);
+        printf("No space in arena to alloc %lu bytes\n", num_bytes);
         exit(1);
     }
     size_t total_num_bytes = arena->size;
