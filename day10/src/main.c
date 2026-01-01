@@ -67,6 +67,8 @@ struct QueueJS {
     size_t tail;
 };
 
+static U64 evaluations = 0;
+
 // ----------------------------------------------------- //
 U32 U32_from_sslice(StringSlice slice)
 {
@@ -366,7 +368,7 @@ U32 Manual_find_fewest_presses(Arena *arena, Manual manual, U32 iter_max)
         String_push(&all_off, '.');
     }
 
-    for (int k = 0; k < manual.wirings.len; k++) {
+    for (int k = 0; k <= manual.wirings.len; k++) {
         if (result) {
             break;
         }
@@ -468,7 +470,7 @@ U64 get_min_presses_to_get_joltages(
     }
 
     U32 additional_presses = 0;
-    for (int k = 0; k < manual.wirings.len; k++) {
+    for (int k = 0; k <= manual.wirings.len; k++) {
         Combinations comb = Combinations_init(arena, manual.wirings.len, k);
 
         while (comb.index) {
@@ -483,31 +485,30 @@ U64 get_min_presses_to_get_joltages(
                 ArrayU32_press_apply(&joltages_new, wiring);
             }
 
-            Combinations_next(&comb);
-
             StringSlice lights = {state.lights.items, state.lights.len};
 
             if (!StringSlice_equal(lights, pattern_as_slice)) {
+                Combinations_next(&comb);
+                continue;
+            }
+
+            additional_presses = k;
+
+            B32 can_subtract = 1;
+            for (size_t i = 0; i < joltages.len; i++) {
+                if (joltages.items[i] < joltages_new.items[i]) {
+                    can_subtract = 0;
+                    break;
+                }
+            }
+            if (!can_subtract) {
+                Combinations_next(&comb);
                 continue;
             }
 
             ArrayU32 to_test = ArrayU32_copy(temp.arena, joltages);
             ArrayU32_sub(&to_test, joltages_new);
-            additional_presses = k;
 
-            B32 skip = 0;
-            for (size_t i = 0; i < to_test.len; i++) {
-                U32 num = ArrayU32_get_value(&to_test, i);
-                if (num > 10000) {
-                    skip = 1;
-                }
-            }
-            if (skip) {
-                continue;
-            }
-
-            // ArrayU32_print(joltages);
-            // ArrayU32_print(to_test);
             for (size_t i = 0; i < to_test.len; i++) {
                 U32 *num = ArrayU32_get_ref(&to_test, i);
                 if ((*num % 2)) {
@@ -516,14 +517,13 @@ U64 get_min_presses_to_get_joltages(
 
                 *num /= 2;
             }
-            // ArrayU32_print(to_test);
-
-            // printf("\n");
 
             U64 half_num_presses =
                 get_min_presses_to_get_joltages(temp.arena, manual, to_test);
+            evaluations += 1;
 
             if (half_num_presses == UINT64_MAX) {
+                Combinations_next(&comb);
                 continue;
             }
 
@@ -532,6 +532,7 @@ U64 get_min_presses_to_get_joltages(
             if (num_presses < min_presses) {
                 min_presses = num_presses;
             }
+            Combinations_next(&comb);
         }
     }
 
@@ -583,6 +584,7 @@ int main()
     }
 
     printf(ANSI_TEXT_GREEN "result part 2: %lu\n" ANSI_RESET, result_part_2);
+    printf("Total evals for part 2: %lu", evaluations);
 
     return 0;
 }
