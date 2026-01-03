@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "bits/types/struct_timeval.h"
 #include "cbase/src/ansi_codes.h"
 #include "cbase/src/arena.c"
 #include "cbase/src/array.c"
@@ -126,6 +127,8 @@ void ArrayNode_print(const ArrayNode nodes)
             printf(ANSI_RESET "> ");
         }
 
+        printf("visits: %u", node.visist);
+
         printf("\n");
     }
 }
@@ -153,8 +156,8 @@ void fill_nodes_from_lines(
         U32 node_index_current = ArrayNode_get_index_of_label(*nodes, label);
         if (node_index_current == UINT32_MAX) {
             // need to create a new node
-            printf("created node ");
-            StringSlice_print(label);
+            // printf("created node ");
+            // StringSlice_print(label);
             Node node_new = Node_create(arena, label);
             ArrayNode_push(nodes, node_new);
             node_index_current = ArrayNode_get_index_of_label(*nodes, label);
@@ -170,8 +173,8 @@ void fill_nodes_from_lines(
                 ArrayNode_get_index_of_label(*nodes, label_conn);
             if (node_index_conn == UINT32_MAX) {
                 Node node_conn_new = Node_create(arena, label_conn);
-                printf("added node ");
-                StringSlice_print(label_conn);
+                // printf("added node ");
+                // StringSlice_print(label_conn);
                 ArrayNode_push(nodes, node_conn_new);
                 node_index_conn =
                     ArrayNode_get_index_of_label(*nodes, label_conn);
@@ -203,7 +206,6 @@ void bfs_traverse_nodes(Arena *arena, ArrayNode nodes, Node *root)
 
     while (q.size) {
         StringSlice label_curr = QueueSSlice_pop(&q);
-        StringSlice_print(label_curr);
         U32 index_node_curr = ArrayNode_get_index_of_label(nodes, label_curr);
         assert(index_node_curr != UINT32_MAX);
         Node *node_curr = ArrayNode_get_ref(&nodes, index_node_curr);
@@ -246,7 +248,6 @@ int main()
 
     ArrayNode nodes = ArrayNode_with_capacity(&arena, lines.len + 10);
     fill_nodes_from_lines(&arena, &nodes, lines);
-    ArrayNode_print(nodes);
 
     String _label_you     = String_from_cstring("you");
     StringSlice label_you = {_label_you.items, _label_you.len};
@@ -258,7 +259,6 @@ int main()
 
     U32 index_node_end = ArrayNode_get_index_of_label(nodes, label_end);
     Node *node_end     = ArrayNode_get_ref(&nodes, index_node_end);
-    StringSlice_print(node_end->label);
     printf("result part 1: %u\n", node_end->visist);
 
     Arena_free(&arena);
