@@ -15,3 +15,5 @@ day8/test.c
 day8/a.out
 day9/out
 day9/view.png
+.direnv/*
+flake.lock

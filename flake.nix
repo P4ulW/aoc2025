@@ -2,7 +2,7 @@
   description = "AOC 2025 environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-stable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
   };
 
   outputs =
@@ -21,7 +21,7 @@
         nativeBuildInputs = [
           pkgs.buildPackages.gcc
           pkgs.buildPackages.binutils
-          pkgs.clang_tools
+          pkgs.clang-tools
 
         ];
 
