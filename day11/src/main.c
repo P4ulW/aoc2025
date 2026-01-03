@@ -392,17 +392,9 @@ int main()
         node->visist = 0;
     }
     {
-        String _label_svr     = String_from_cstring("svr");
-        StringSlice label_svr = {_label_svr.items, _label_svr.len};
-        String _label_end     = String_from_cstring("out");
-        StringSlice label_end = {_label_end.items, _label_end.len};
-        U32 index_node_svr    = ArrayNode_get_index_of_label(nodes, label_svr);
-        Node *node_svr        = ArrayNode_get_ref(&nodes, index_node_svr);
-        bfs_traverse_nodes_part2(&arena, nodes, node_svr);
-
-        U32 index_node_end = ArrayNode_get_index_of_label(nodes, label_end);
-        Node *node_end     = ArrayNode_get_ref(&nodes, index_node_end);
-        result_part_2      = node_end->visist;
+        U32 index_node_svr =
+            ArrayNode_get_index_of_label(nodes, (StringSlice){"svr", 3});
+        find_paths(index_node_svr, (StringSlice){})
     }
 
     Arena_free(&arena);
