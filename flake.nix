@@ -19,8 +19,8 @@
     {
       devShells.${system}.default = pkgs.mkShell {
         nativeBuildInputs = [
-          pkgs.buildPackages.gcc
-          pkgs.buildPackages.binutils
+          pkgs.gcc
+          pkgs.binutils
           pkgs.clang-tools
 
         ];

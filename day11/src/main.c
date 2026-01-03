@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "bits/types/struct_timeval.h"
 #include "cbase/src/ansi_codes.h"
 #include "cbase/src/arena.c"
 #include "cbase/src/array.c"
