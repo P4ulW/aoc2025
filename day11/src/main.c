@@ -8,6 +8,8 @@
 #include "cbase/src/array.c"
 #include "cbase/src/string.c"
 #include "cbase/src/file.c"
+#include <time.h>
+#include <sys/time.h>
 
 #define EXAMPLE 0
 
@@ -231,6 +233,8 @@ void bfs_traverse_nodes(Arena *arena, ArrayNode nodes, Node *root)
 // ----------------------------------------------------- //
 int main()
 {
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     Arena arena;
     Arena_init(&arena, Megabytes(10));
 
@@ -262,5 +266,9 @@ int main()
     printf("result part 1: %u\n", node_end->visist);
 
     Arena_free(&arena);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
+                        (end.tv_nsec - start.tv_nsec) / 1000000.0;
+    printf("Time taken: %.3f milliseconds\n", elapsed_ms);
     return 0;
 }
