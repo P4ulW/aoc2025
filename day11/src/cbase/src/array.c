@@ -114,6 +114,20 @@ typedef uint32_t U32;
         self->len -= 1;                                                         \
         out = self->items[self->len];                                           \
         return out;                                                             \
+    }                                                                           \
+                                                                                \
+    type Array##type##_peek(Array##type *self)                                  \
+    {                                                                           \
+        type out = {0};                                                         \
+        if (!self->len) {                                                       \
+            fprintf(                                                            \
+                stderr,                                                         \
+                "trying to peek at empty array! Array type: %s",                \
+                #type);                                                         \
+            return out;                                                         \
+        }                                                                       \
+        out = self->items[self->len - 1];                                       \
+        return out;                                                             \
     }
 
 #endif /* ifndef ARRAY */

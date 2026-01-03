@@ -10,9 +10,9 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define EXAMPLE 0
+#define EXAMPLE 1
 
-#if EXAMPLE == 1
+#if EXAMPLE == 0
 #define FILENAME "test.txt"
 #else
 #define FILENAME "input.txt"
@@ -29,6 +29,21 @@ typedef struct {
     U32 size;
 } QueueSSlice;
 
+typedef struct Path {
+    // ArrayU32 visited;
+    U32 visited;
+    B32 visited_dac;
+    B32 visited_fft;
+} Path;
+
+typedef struct {
+    Path *items;
+    U32 head;
+    U32 tail;
+    U32 cap;
+    U32 size;
+} QueuePath;
+
 typedef struct Node Node;
 struct Node {
     StringSlice label;
@@ -37,6 +52,55 @@ struct Node {
 };
 Array_Prototype(Node);
 Array_Impl(Node);
+
+// ----------------------------------------------------- //
+Path Path_new(Arena *arena, U32 index)
+{
+    Path out        = {0};
+    out.visited     = index;
+    out.visited_dac = 0;
+    out.visited_fft = 0;
+    return out;
+}
+
+// ----------------------------------------------------- //
+QueuePath QueuePath_new(Arena *arena, U32 capacity)
+{
+    QueuePath q = {0};
+    q.items     = Arena_alloc(arena, sizeof(Path) * capacity);
+    q.cap       = capacity;
+    q.size      = 0;
+    q.tail      = 0;
+    q.head      = 0;
+    return q;
+}
+
+// ----------------------------------------------------- //
+void QueuePath_push(QueuePath *q, Path path)
+{
+    if (q->size == q->cap) {
+        printf("QueuePath is full!, cannot push!\n");
+        return;
+    }
+    q->items[q->head] = path;
+    q->head           = (q->head + 1) % q->cap;
+    q->size += 1;
+    return;
+}
+
+// ----------------------------------------------------- //
+Path QueuePath_pop(QueuePath *q)
+{
+    Path out = {0};
+    if (q->size == 0) {
+        printf("QueuePath is empty!, cannot pop!\n");
+        return out;
+    }
+    out     = q->items[q->tail];
+    q->tail = (q->tail + 1) % q->cap;
+    q->size -= 1;
+    return out;
+}
 
 // ----------------------------------------------------- //
 QueueSSlice QueueSSlice_new(Arena *arena, U32 capacity)
@@ -192,8 +256,8 @@ void bfs_traverse_nodes(Arena *arena, ArrayNode nodes, Node *root)
 {
     String _label_end     = String_from_cstring("out");
     StringSlice label_end = {_label_end.items, _label_end.len};
-    String _label_you     = String_from_cstring("you");
-    StringSlice label_you = {_label_you.items, _label_you.len};
+    // String _label_you     = String_from_cstring("you");
+    // StringSlice label_you = {_label_you.items, _label_you.len};
 
     Temp temp     = Temp_start(arena);
     QueueSSlice q = QueueSSlice_new(temp.arena, 1000);
@@ -229,13 +293,68 @@ void bfs_traverse_nodes(Arena *arena, ArrayNode nodes, Node *root)
     return;
 }
 
+void bfs_traverse_nodes_part2(Arena *arena, ArrayNode nodes, Node *root)
+{
+    String _label_out     = String_from_cstring("out");
+    StringSlice label_out = {_label_out.items, _label_out.len};
+    String _label_fft     = String_from_cstring("fft");
+    StringSlice label_fft = {_label_fft.items, _label_fft.len};
+    String _label_dac     = String_from_cstring("dac");
+    StringSlice label_dac = {_label_dac.items, _label_dac.len};
+    String _label_svr     = String_from_cstring("svr");
+    StringSlice label_svr = {_label_svr.items, _label_svr.len};
+
+    Temp temp   = Temp_start(arena);
+    QueuePath q = QueuePath_new(temp.arena, 2000000);
+
+    for (size_t i = 0; i < root->connections.len; i++) {
+        U32 index_node_next = ArrayU32_get_value(&root->connections, i);
+        Path path           = Path_new(temp.arena, index_node_next);
+        QueuePath_push(&q, path);
+    }
+
+    while (q.size) {
+        Path path_curr      = QueuePath_pop(&q);
+        U32 index_node_curr = path_curr.visited;
+        assert(index_node_curr != UINT32_MAX);
+
+        Node *node_curr = ArrayNode_get_ref(&nodes, index_node_curr);
+
+        if (path_curr.visited_fft && path_curr.visited_dac) {
+            node_curr->visist += 1;
+        }
+
+        if (StringSlice_equal(node_curr->label, label_svr)) {
+            continue;
+        } else if (StringSlice_equal(node_curr->label, label_out)) {
+            continue;
+        } else if (StringSlice_equal(node_curr->label, label_fft)) {
+            path_curr.visited_fft = 1;
+        } else if (StringSlice_equal(node_curr->label, label_dac)) {
+            path_curr.visited_dac = 1;
+        }
+
+        for (size_t i = 0; i < node_curr->connections.len; i++) {
+            U32 index_node_next =
+                ArrayU32_get_value(&node_curr->connections, i);
+            Path path_next        = Path_new(temp.arena, index_node_next);
+            path_next.visited_fft = path_curr.visited_fft;
+            path_next.visited_dac = path_curr.visited_dac;
+            QueuePath_push(&q, path_next);
+        }
+    }
+
+    Temp_end(temp);
+    return;
+}
+
 // ----------------------------------------------------- //
 int main()
 {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     Arena arena;
-    Arena_init(&arena, Megabytes(10));
+    Arena_init(&arena, Megabytes(1000));
 
     String input           = String_with_capacity(&arena, Kilobytes(1024));
     ArrayStringSlice lines = ArrayStringSlice_with_capacity(&arena, 1024);
@@ -252,22 +371,47 @@ int main()
     ArrayNode nodes = ArrayNode_with_capacity(&arena, lines.len + 10);
     fill_nodes_from_lines(&arena, &nodes, lines);
 
-    String _label_you     = String_from_cstring("you");
-    StringSlice label_you = {_label_you.items, _label_you.len};
-    String _label_end     = String_from_cstring("out");
-    StringSlice label_end = {_label_end.items, _label_end.len};
-    U32 index_node_you    = ArrayNode_get_index_of_label(nodes, label_you);
-    Node *node_you        = ArrayNode_get_ref(&nodes, index_node_you);
-    bfs_traverse_nodes(&arena, nodes, node_you);
+    U32 result_part_1 = 0;
+    // {
+    //     String _label_you     = String_from_cstring("you");
+    //     StringSlice label_you = {_label_you.items, _label_you.len};
+    //     String _label_end     = String_from_cstring("out");
+    //     StringSlice label_end = {_label_end.items, _label_end.len};
+    //     U32 index_node_you    = ArrayNode_get_index_of_label(nodes,
+    //     label_you); Node *node_you        = ArrayNode_get_ref(&nodes,
+    //     index_node_you); bfs_traverse_nodes(&arena, nodes, node_you);
+    //
+    //     U32 index_node_end = ArrayNode_get_index_of_label(nodes, label_end);
+    //     Node *node_end     = ArrayNode_get_ref(&nodes, index_node_end);
+    //     result_part_1      = node_end->visist;
+    // }
 
-    U32 index_node_end = ArrayNode_get_index_of_label(nodes, label_end);
-    Node *node_end     = ArrayNode_get_ref(&nodes, index_node_end);
-    printf("result part 1: %u\n", node_end->visist);
+    U32 result_part_2 = 0;
+    for (size_t i = 0; i < nodes.len; i++) {
+        Node *node   = ArrayNode_get_ref(&nodes, i);
+        node->visist = 0;
+    }
+    {
+        String _label_svr     = String_from_cstring("svr");
+        StringSlice label_svr = {_label_svr.items, _label_svr.len};
+        String _label_end     = String_from_cstring("out");
+        StringSlice label_end = {_label_end.items, _label_end.len};
+        U32 index_node_svr    = ArrayNode_get_index_of_label(nodes, label_svr);
+        Node *node_svr        = ArrayNode_get_ref(&nodes, index_node_svr);
+        bfs_traverse_nodes_part2(&arena, nodes, node_svr);
+
+        U32 index_node_end = ArrayNode_get_index_of_label(nodes, label_end);
+        Node *node_end     = ArrayNode_get_ref(&nodes, index_node_end);
+        result_part_2      = node_end->visist;
+    }
 
     Arena_free(&arena);
     clock_gettime(CLOCK_MONOTONIC, &end);
     double elapsed_ms = (end.tv_sec - start.tv_sec) * 1000.0 +
                         (end.tv_nsec - start.tv_nsec) / 1000000.0;
     printf("Time taken: %.3f milliseconds\n", elapsed_ms);
+
+    printf(ANSI_TEXT_GREEN "result part 1: %u\n" ANSI_RESET, result_part_1);
+    printf(ANSI_TEXT_GREEN "result part 2: %u\n" ANSI_RESET, result_part_2);
     return 0;
 }
